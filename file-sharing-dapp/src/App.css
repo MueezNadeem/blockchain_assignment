@@ -1,0 +1,49 @@
+body {
+  font-family: 'Arial', sans-serif;
+  /* A clean, modern font */
+  margin: 0;
+}
+
+.main-container {
+  text-align: center;
+  padding: 30px;
+}
+
+.account-section {
+  border: 1px solid #e0e0e0;
+  /* Softer border */
+  padding: 25px;
+  margin: 20px;
+  border-radius: 5px;
+  /* Slightly rounded corners */
+  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+  /* Subtle shadow */
+}
+
+.input-group {
+  margin-bottom: 15px;
+}
+
+.input-field {
+  margin-right: 10px;
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.primary-button {
+  background-color: #007bff;
+  /* Example vibrant color */
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  /* Smooth hover effect */
+}
+
+.primary-button:hover {
+  background-color: #0056b3;
+  /* Slightly darker on hover */
+}
