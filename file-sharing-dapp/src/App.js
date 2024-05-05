@@ -1,7 +1,15 @@
 import React, { useEffect, useState } from "react";
 import Web3 from "web3";
 import FileSharing from "./FileSharing.json"; // Truffle artifact for the FileSharing smart contract
+import { create as ipfsHttpClient } from "ipfs-http-client"; // IPFS client
 import "./App.css";
+
+// Connect to the local IPFS node
+const ipfs = ipfsHttpClient({
+  host: "127.0.0.1",
+  port: 5001,
+  protocol: "http",
+});
 
 function App() {
   const [web3, setWeb3] = useState(null);
@@ -9,9 +17,11 @@ function App() {
   const [contract, setContract] = useState(null);
   const [isRegistered, setIsRegistered] = useState(false);
   const [fileName, setFileName] = useState("");
-  const [ipfsHash, setIpfsHash] = useState("");
+  const [selectedFile, setSelectedFile] = useState(null);
   const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [searchQuery, setSearchQuery] = useState(""); // New state variable for search query
 
+  // Initialize Web3
   useEffect(() => {
     const initWeb3 = async () => {
       if (window.ethereum) {
@@ -28,6 +38,7 @@ function App() {
     initWeb3();
   }, []);
 
+  // Initialize the Contract
   useEffect(() => {
     const initContract = async () => {
       if (web3) {
@@ -49,6 +60,7 @@ function App() {
     initContract();
   }, [web3]);
 
+  // Check if User is Registered
   useEffect(() => {
     const checkRegistration = async () => {
       if (contract && account) {
@@ -62,6 +74,7 @@ function App() {
     checkRegistration();
   }, [contract, account]);
 
+  // Sign Up Function
   const handleSignup = async () => {
     if (contract && account && !isRegistered) {
       await contract.methods.signup().send({ from: account });
@@ -69,36 +82,62 @@ function App() {
     }
   };
 
+  // File Upload Function
   const handleFileUpload = async () => {
-    if (contract && isRegistered && fileName && ipfsHash) {
-      await contract.methods
-        .uploadFile(fileName, ipfsHash)
-        .send({ from: account });
-      alert("File uploaded successfully!");
+    if (contract && isRegistered && selectedFile) {
+      try {
+        // Upload the selected file to IPFS
+        const added = await ipfs.add(selectedFile);
+        const ipfsHash = added.path;
+
+        // Store file metadata in the smart contract
+        await contract.methods
+          .uploadFile(selectedFile.name, ipfsHash)
+          .send({ from: account });
+
+        // Refresh uploaded files
+        loadUploadedFiles();
+
+        console.log("File uploaded successfully!");
+      } catch (error) {
+        console.error("Error uploading file:", error);
+      }
     } else {
-      alert("Please enter a file name and IPFS hash.");
+      console.error("No file selected or not registered.");
     }
   };
 
-  const handleFileNameChange = (e) => {
-    setFileName(e.target.value);
+  // Handle File Selection
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    setSelectedFile(file);
   };
 
-  const handleIpfsHashChange = (e) => {
-    setIpfsHash(e.target.value);
-  };
-
+  // Load Uploaded Files
   const loadUploadedFiles = async () => {
     if (contract && isRegistered) {
       const fileCount = await contract.methods.fileCount().call();
       const files = [];
       for (let i = 1; i <= fileCount; i++) {
         const file = await contract.methods.files(i).call();
-        if (file.uploader === account) {
-          files.push(file);
-        }
+        files.push(file);
       }
       setUploadedFiles(files);
+    }
+  };
+
+  // Handle Search
+  const handleSearch = async () => {
+    if (contract && isRegistered) {
+      const fileCount = await contract.methods.fileCount().call();
+      const filteredFiles = [];
+      for (let i = 1; i <= fileCount; i++) {
+        const file = await contract.methods.files(i).call();
+        if (file.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+          filteredFiles.push(file);
+        }
+      }
+      setUploadedFiles(filteredFiles); // Update displayed files based on search
     }
   };
 
@@ -111,30 +150,41 @@ function App() {
             <div>
               <div className="input-group">
                 <input
-                  type="text"
-                  placeholder="File name"
-                  value={fileName}
-                  onChange={handleFileNameChange}
-                  className="input-field"
-                />
-                <input
-                  type="text"
-                  placeholder="IPFS Hash"
-                  value={ipfsHash}
-                  onChange={handleIpfsHashChange}
+                  type="file"
+                  onChange={handleFileSelect}
                   className="input-field"
                 />
                 <button onClick={handleFileUpload} className="primary-button">
                   Upload File
                 </button>
               </div>
+              <div className="search-section">
+                {" "}
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)} // Update search query
+                  className="input-field"
+                  placeholder="Search by file name"
+                />
+                <button onClick={handleSearch} className="primary-button">
+                  Search
+                </button>
+              </div>
               <button onClick={loadUploadedFiles} className="primary-button">
-                Load My Uploaded Files
+                Load All Files
               </button>
               <ul>
                 {uploadedFiles.map((file, index) => (
                   <li key={index}>
-                    {file.name} - IPFS Hash: {file.hash}
+                    {file.name} -
+                    <a
+                      href={`http://127.0.0.1:8080/ipfs/${file.hash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Download
+                    </a>
                   </li>
                 ))}
               </ul>
